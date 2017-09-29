@@ -1,4 +1,5 @@
 from scapy.all import *
+import math
 
 pcapFile = 'test.pcap'
 
@@ -33,4 +34,13 @@ for pkt in pcapInput:
     else:
         symbolCount[sym] = 1
 
-print symbolCount
+totalPkts = len(pcapInput) * 1.0
+symbolData = symbolCount.copy()
+entropy = 0
+for sym in symbolCount:
+    symbolProbability = symbolCount[sym]/totalPkts
+    symbolInformation = -math.log(symbolProbability, 2)
+    symbolData[sym] = (symbolProbability, symbolInformation)
+    entropy = entropy + symbolProbability * symbolInformation
+
+print symbolData, entropy
