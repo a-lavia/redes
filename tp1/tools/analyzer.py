@@ -23,7 +23,7 @@ class ModelS1(Model):
         return (self.getDstType(pkt), self.getLayers(pkt)[1])
 
     def toStr(self, symbol):
-        return '<' + symbol[0] + ',' + symbol[1] + '>'
+        return '<' + symbol[0] + ', ' + symbol[1] + '>'
 
 class ModelS2(Model):
     def name(self):
@@ -33,7 +33,7 @@ class ModelS2(Model):
         return self.getLayers(pkt)[0]
 
     def toStr(self, symbol):
-        return ''
+        return str(symbol)
 
 class Analizer:
 
@@ -46,16 +46,16 @@ class Analizer:
         symbolCount = {}
         symbolProbability = {}
         entropy = {}
-        count = 0
+        frameCount = 0
         for pkt in self.pcapInput:
             symbol = self.model.symbol(pkt)
             if symbolCount.has_key(symbol):
                 symbolCount[symbol] += 1
             else:
                 symbolCount[symbol] = 1
-            count+=1
+            frameCount+=1
             symbolProbability = self.calculateSymbolsProbability(symbolCount)
-            entropy[count] = self.calculateEntropy(symbolProbability)
+            entropy[frameCount] = self.calculateEntropy(symbolProbability)
         self.printTable(symbolProbability, entropy)
         self.printEntropy(entropy)
 
@@ -85,7 +85,8 @@ class Analizer:
         return entropy
 
     def printTable(self, symbolProbability, entropy):
-        f = open(self.fileName + '_' + self.model.name() + '_table_' + '.csv', 'w')
+        f = open(self.fileName + '_' + self.model.name() + '_table' + '.csv', 'w')
+        f.write('symbol;probability;information\n')
         for symbol, probability in symbolProbability.iteritems():
             f.write(self.model.toStr(symbol) + ';' + str(probability[0]) + ';' + str(probability[1]) + '\n')
         f.write('entropy'+ ';' + str(self.calculateEntropy(symbolProbability)) + '\n')
@@ -94,7 +95,8 @@ class Analizer:
 
     def printEntropy(self, entropy):
         symbolCount = {}
-        f = open(self.fileName + '_' + self.model.name() + '_entropy_' + '.csv', 'w')
+        f = open(self.fileName + '_' + self.model.name() + '_entropy' + '.csv', 'w')
+        f.write('frame;entropy\n')
         for n, probability in entropy.iteritems():
             f.write(str(n) + ';' + str(probability) + '\n')
         f.close()
