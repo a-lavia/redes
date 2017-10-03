@@ -37,31 +37,18 @@ class ModelS2(Model):
 
 class Analizer:
 
-    def __init__(self, file, model):
-        self.fileName = file.split('.')[0]
-        self.pcapInput = rdpcap(file)
+    def __init__(self, model):
         self.model = model
 
-    def process(self):
-        symbolCount = {}
-        symbolProbability = {}
-        entropy = {}
-        frameCount = 0
-        for pkt in self.pcapInput:
-            symbol = self.model.symbol(pkt)
-            if symbolCount.has_key(symbol):
-                symbolCount[symbol] += 1
-            else:
-                symbolCount[symbol] = 1
-            frameCount+=1
-            symbolProbability = self.calculateSymbolsProbability(symbolCount)
-            entropy[frameCount] = self.calculateEntropy(symbolProbability)
-        self.printTable(symbolProbability, entropy)
-        self.printEntropy(entropy)
+    def process(self, fileName):
+        frames = rdpcap(fileName)
+        symbolCount = self.countSymbols(frames)
+        symbolProbability = self.calculateSymbolsProbability(symbolCount)
+        self.printTable(symbolProbability, fileName.split('.')[0])
 
-    def countSymbols(self):
+    def countSymbols(self, frames):
         symbolCount = {}
-        for pkt in self.pcapInput:
+        for pkt in frames:
             symbol = self.model.symbol(pkt)
             if symbolCount.has_key(symbol):
                 symbolCount[symbol] += 1
@@ -84,21 +71,16 @@ class Analizer:
             entropy = entropy + probability[0] * probability[1]
         return entropy
 
-    def printTable(self, symbolProbability, entropy):
-        f = open(self.fileName + '_' + self.model.name() + '_table' + '.csv', 'w')
+    def calculateMaxEntropy(self, symbolProbability):
+        return math.log(len(symbolProbability.values()),2)
+
+    def printTable(self, symbolProbability, fileName):
+        f = open(fileName + '_' + self.model.name() + '_table' + '.csv', 'w')
         f.write('symbol;probability;information\n')
         for symbol, probability in symbolProbability.iteritems():
             f.write(self.model.toStr(symbol) + ';' + str(probability[0]) + ';' + str(probability[1]) + '\n')
         f.write('entropy'+ ';' + str(self.calculateEntropy(symbolProbability)) + '\n')
-        f.write('max_entropy' + ';' + str(max(entropy.values())))
-        f.close()
-
-    def printEntropy(self, entropy):
-        symbolCount = {}
-        f = open(self.fileName + '_' + self.model.name() + '_entropy' + '.csv', 'w')
-        f.write('frame;entropy\n')
-        for n, probability in entropy.iteritems():
-            f.write(str(n) + ';' + str(probability) + '\n')
+        f.write('max_entropy' + ';' + str(self.calculateMaxEntropy(symbolProbability)))
         f.close()
 
 if __name__ == "__main__":
@@ -119,5 +101,5 @@ if __name__ == "__main__":
             print 'El modelo de la fuente debe ser S1 o S2.'
             sys.exit()
 
-        analizer = Analizer(fileName, sourceModel)
-        analizer.process()
+        analizer = Analizer(sourceModel)
+        analizer.process(fileName)
