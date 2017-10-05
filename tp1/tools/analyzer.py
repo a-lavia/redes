@@ -1,3 +1,5 @@
+import logging
+logging.getLogger("scapy.runtime").setLevel(logging.ERROR)
 from scapy.all import *
 import math
 
@@ -75,7 +77,7 @@ class Analizer:
         return math.log(len(symbolProbability.values()),2)
 
     def printTable(self, symbolProbability, fileName):
-        f = open(fileName + '_' + self.model.name() + '_table' + '.csv', 'w')
+        f = open('tablas/' + fileName[8:] + '_' + self.model.name() + '_table' + '.csv', 'w')
         f.write('symbol;probability;information\n')
         for symbol, probability in symbolProbability.iteritems():
             f.write(self.model.toStr(symbol) + ';' + str(probability[0]) + ';' + str(probability[1]) + '\n')
