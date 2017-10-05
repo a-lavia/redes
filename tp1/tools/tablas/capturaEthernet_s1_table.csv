@@ -1,0 +1,11 @@
+symbol;probability;information
+<unicast, Raw>;0.00368;8.08607851838
+<unicast, LLC>;0.01709;5.87070379276
+<broadcast, ARP>;0.12988;2.94474880515
+<unicast, IP>;0.5992;0.738890471091
+<unicast, IPv6>;0.0797;3.64927646556
+<broadcast, IP>;0.16722;2.58018068661
+<unicast, ARP>;0.0003;11.7027498788
+<broadcast, LLC>;0.00293;8.41488362001
+entropy;1.70576582455
+max_entropy;3.0
