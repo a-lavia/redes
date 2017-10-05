@@ -49,7 +49,7 @@ class Analizer:
         frames = rdpcap(fileName)
         symbolCount = self.countSymbols(frames)
         symbolProbability = self.calculateSymbolsProbability(symbolCount)
-        self.printTable(symbolProbability, fileName.split('.')[0])
+        self.printTable(symbolProbability, fileName.split('.')[-2].split('/')[-1])
 
     def countSymbols(self, frames):
         symbolCount = {}
@@ -81,7 +81,7 @@ class Analizer:
         return math.log(len(symbolProbability.values()),2)
 
     def printTable(self, symbolProbability, fileName):
-        f = open('tablas/' + fileName[8:] + '_' + self.model.name() + '_table' + '.csv', 'w')
+        f = open('tablas/' + fileName + '_' + self.model.name() + '_table' + '.csv', 'w')
         f.write('symbol;probability;information\n')
         for symbol, probability in symbolProbability.iteritems():
             f.write(self.model.toStr(symbol) + ';' + str(probability[0]) + ';' + str(probability[1]) + '\n')
