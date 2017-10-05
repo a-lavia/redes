@@ -30,10 +30,13 @@ class ModelS2(Model):
         return 's2'
 
     def symbol(self, pkt):
-        return self.getLayers(pkt)[0]
+        if self.getLayers(pkt)[1] == 'ARP':
+            return (self.getLayers(pkt)[1], pkt.pdst)
+        else:
+            return None
 
     def toStr(self, symbol):
-        return str(symbol)
+        return '<' + symbol[0] + ', ' + str(symbol[1]) + '>'
 
 class Analizer:
 
@@ -50,10 +53,11 @@ class Analizer:
         symbolCount = {}
         for pkt in frames:
             symbol = self.model.symbol(pkt)
-            if symbolCount.has_key(symbol):
-                symbolCount[symbol] += 1
-            else:
-                symbolCount[symbol] = 1
+            if symbol is not None:
+                if symbolCount.has_key(symbol):
+                    symbolCount[symbol] += 1
+                else:
+                    symbolCount[symbol] = 1
         return symbolCount
 
     def calculateSymbolsProbability(self, symbolCount):
@@ -80,7 +84,8 @@ class Analizer:
         for symbol, probability in symbolProbability.iteritems():
             f.write(self.model.toStr(symbol) + ';' + str(probability[0]) + ';' + str(probability[1]) + '\n')
         f.write('entropy'+ ';' + str(self.calculateEntropy(symbolProbability)) + '\n')
-        f.write('max_entropy' + ';' + str(self.calculateMaxEntropy(symbolProbability)))
+        if len(symbolProbability) > 0:
+            f.write('max_entropy' + ';' + str(self.calculateMaxEntropy(symbolProbability)))
         f.close()
 
 if __name__ == "__main__":
