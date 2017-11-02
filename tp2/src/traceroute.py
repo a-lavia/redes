@@ -3,41 +3,38 @@ logging.getLogger("scapy.runtime").setLevel(logging.ERROR)
 import sys
 from scapy.all import *
 import time
+import json
 
 
 def traceroute(host):
+    cantRespuestas = 30
     print "Traceroute:", host
-    notEchoReply = True
+    echoReply = False
     ttl=1
     hops = []
-    while notEchoReply:
-        startTime = time.clock()
-        ans, unans = sr(IP(dst=host,ttl=ttl)/ICMP())
-        finishTime = time.clock()
-        if ans.res[0][1].type == 0:
-            # recibi ICMP echo-reply
-            notEchoReply = False
-        else:
-            # guardo la info del hop del ICMP error message y el tiempo en milisegundos
-            ttl +=1        
-        hops.append([ans.res[0][1], (finishTime - startTime)*0.001])
+    while (not echoReply) or ttl == 20:
+        lst = []
+        for i in range(cantRespuestas):
+            startTime = time.clock()
+            ans, unans = sr(IP(dst=host,ttl=ttl)/ICMP(), timeout=1) #verbose=0
+            finishTime = time.clock()
+            if len(ans) != 0:
+                # guardo la info del hop del ICMP error message y el tiempo en milisegundos
+                lst.append([ans.res[0][1].src, ans.res[0][1].type, (finishTime - startTime)*1000])
+            else:
+                lst.append(['null', 11, 0])
+
+        for i in range(len(lst)):
+            if len(lst[i]) > 0 and lst[i][1] == 0:
+                # recibi ICMP echo-reply
+                echoReply = True
+                break
+            elif i == len(lst)-1:
+                ttl+=1
+        hops.append(lst)
 
     return hops
 
-
-def printHops(hops):
-    print '['
-    for i in range(len(hops)):
-        print '    {'
-        print '        "rtt": ' + str(hops[i][1]) + ','
-        print '        "ip_address:" ' + hops[i][0].src  + ','
-        print '        "salto_intercontinental:" ' + 'lol'  + ','
-        print '        "hop_num:" ' + str(i+1)
-        if i != len(hops)-1:
-            print '    },'
-        else:
-            print '    }'
-    print ']'
 
 
 if __name__ == "__main__":
@@ -46,4 +43,4 @@ if __name__ == "__main__":
         sys.exit()
     else:
         hops = traceroute(sys.argv[1])
-        printHops(hops)
+        print len(hops)
