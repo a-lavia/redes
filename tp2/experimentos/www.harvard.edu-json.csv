@@ -1,0 +1,56 @@
+[
+{
+    "rtt": 6.217999999999946, 
+    "ip_address": "192.168.0.1", 
+    "salto_intercontinental": "true", 
+    "hop_num": 1
+}
+{
+    "rtt": 11.109000000000036, 
+    "ip_address": "192.168.2.1", 
+    "salto_intercontinental": "true", 
+    "hop_num": 2
+}
+{
+    "rtt": 9.948000000000068, 
+    "ip_address": "172.16.128.1", 
+    "salto_intercontinental": "false", 
+    "hop_num": 3
+}
+{
+    "rtt": 9.956999999999994, 
+    "ip_address": "10.0.13.1", 
+    "salto_intercontinental": "false", 
+    "hop_num": 4
+}
+{
+    "rtt": 10.326000000000057, 
+    "ip_address": "186.0.137.1", 
+    "salto_intercontinental": "false", 
+    "hop_num": 5
+}
+{
+    "rtt": 9.090999999999738, 
+    "ip_address": "190.181.113.73", 
+    "salto_intercontinental": "true", 
+    "hop_num": 6
+}
+{
+    "rtt": 10.315000000000296, 
+    "ip_address": "186.0.137.10", 
+    "salto_intercontinental": "false", 
+    "hop_num": 7
+}
+{
+    "rtt": 10.149999999999881, 
+    "ip_address": "200.0.17.181", 
+    "salto_intercontinental": "false", 
+    "hop_num": 8
+}
+{
+    "rtt": 10.105999999999948, 
+    "ip_address": "104.16.153.6", 
+    "salto_intercontinental": "false", 
+    "hop_num": 9
+}
+]
