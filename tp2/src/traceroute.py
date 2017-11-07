@@ -8,7 +8,7 @@ import json
 
 
 class Traceroute:
-    cantRespuestas = 30
+    cantRespuestas = 100
 
     def __init__(self, host):
         self.host = host
@@ -18,46 +18,48 @@ class Traceroute:
         self.hops = self.allHops()
         self.traceroute = self.tracerouteHeuristico()
         self.buscoSaltosInterc()
-        self.tracerouteJson = self.pasarAJson()
+        self.tracerouteJson = self.toJson()
 
 
     def allHops(self):
         echoReply = False
         ttl=1
         hops = []
-        while (not echoReply) and ttl < 30:
-            lst = []
+        while (not echoReply) and ttl < 31:
+            lstHop = []
             for i in range(self.cantRespuestas):
                 startTime = time.clock()
-                ans, unans = sr(IP(dst=self.host,ttl=ttl)/ICMP(), timeout=1, verbose=0) #verbose=0
+                ans, unans = sr(IP(dst=self.host,ttl=ttl)/ICMP(), timeout=1, verbose=0)
                 finishTime = time.clock()
                 if len(ans) > 0:
                     # guardo la info del hop del ICMP error message y el tiempo en milisegundos
-                    lst.append({'ip_address': ans.res[0][1].src,
+                    lstHop.append({'ip_address': ans.res[0][1].src,
                                 'type': ans.res[0][1].type,
                                 'hop_num': ttl,
                                 'rtt': (finishTime - startTime)*1000,
                                 'salto_intercontinental': 'false'})
                 else:
-                    lst.append({'ip_address': 'null',
+                    lstHop.append({'ip_address': 'null',
                                 'type': 'null',
                                 'hop_num': ttl,
                                 'rtt': 'null',
                                 'salto_intercontinental': 'null'})
 
-            for i in range(len(lst)):
-                if lst[i]['type'] == 0:
+            # De todos los paquetes que recibi, si hay un echo-reply es porque llego a destino
+            # sino aumento el ttl.
+            for i in range(len(lstHop)):
+                if lstHop[i]['type'] == 0:
                     # recibi ICMP echo-reply
                     echoReply = True
                     break
-                elif i == len(lst)-1:
+                elif i == len(lstHop)-1:
                     ttl+=1
-            hops.append(lst)
+            hops.append(lstHop)
         return hops
 
 
     def tracerouteHeuristico(self):
-        # Me quedo con el ip que mas aparece en cada hop pero de rtt menor
+        # Me quedo con el ip que mas aparece en cada hop pero con el rtt promedio de todos
         traceroute = []
         for lstHop in self.hops:
             lstIps = []
@@ -71,19 +73,26 @@ class Traceroute:
             else:
                 ip = self.buscoIpQueMasAparece(lstIps)
                 # dic vuelve sin el campo type
-                dic = self.menorRTT(lstHop, ip)
+                dic = self.dicConRttPromedio(lstHop, ip)
                 traceroute.append(dic)
         return traceroute
 
 
-    def menorRTT(self, lstHop, ip):
-        dic = {'rtt': 1000.0}
+    def dicConRttPromedio(self, lstHop, ip):
+        dic = {}
+        sumaRtt = 0
+        cantConIp = 0
+        levanteValores = False
         for dh in lstHop:
-            if dh['ip_address'] == ip and dh['rtt'] < dic['rtt']:
-                dic['rtt'] = dh['rtt']
-                dic['ip_address'] = dh['ip_address']
-                dic['hop_num'] = dh['hop_num']
-                dic['salto_intercontinental'] = dh['salto_intercontinental']
+            if dh['ip_address'] == ip:
+                if not levanteValores:
+                    dic['ip_address'] = dh['ip_address']
+                    dic['hop_num'] = dh['hop_num']
+                    dic['salto_intercontinental'] = dh['salto_intercontinental']
+                    levanteValores = True
+                sumaRtt += dh['rtt']
+                cantConIp += 1
+        dic['rtt'] = sumaRtt/cantConIp
         return dic
 
 
@@ -95,6 +104,7 @@ class Traceroute:
 
 
     def buscoSaltosInterc(self):
+        # CIMBALA
         # dic, idx, absolute value of deviation
         hops = [[self.traceroute[i], i, 0] for i in range(len(self.traceroute))]
         hayOutlier = True
@@ -141,72 +151,32 @@ class Traceroute:
         return (t*(n-1)) / ((n**0.5)*((n-2 + t**2)**0.5))
 
 
-    def pasarAJson(self):
-        return [json.dumps(hop, indent=4) for hop in self.traceroute]
+    def toJson(self):
+        return json.dumps(self.traceroute, indent=4)
 
 
-    def imprimirListaJson(self):
-        print '['
-        for j in self.tracerouteJson:
-            print j
-        print ']'
+    def printJson(self):
+        print self.tracerouteJson
 
 
     def jsonToFile(self):
-        file = open(self.host + '-json.csv', 'w')
-        file.write('[\n')
-        for x in self.tracerouteJson:
-            file.write(x)
-            file.write('\n')
-        file.write(']')
-        file.close()
-
-
-    def ipsToFile(self):
-        file = open(self.host + '-ips.csv', 'w')
-        for dic in self.traceroute:
-            file.write(dic['ip_address'])
-            file.write('\n')
-        file.close()
-
-
-    def rttToFile(self):
-        file = open(self.host + '-rtt.csv', 'w')
-        for dic in self.traceroute:
-            file.write(str(dic['rtt']))
-            file.write('\n')
-        file.close()
-
-
-    def interJumpToFile(self):
-        file = open(self.host + '-salto.csv', 'w')
-        for dic in self.traceroute:
-            file.write(dic['salto_intercontinental'])
-            file.write('\n')
+        file = open(self.host + '-json.out', 'w')
+        file.write(self.tracerouteJson)
         file.close()
 
 
     def allHopsToFile(self):
         file = open(self.host + '-allHops.csv', 'w')
-        file.write('ip_address,rtt,salto_intercontinental,type,hop_num')
+        file.write('ip_address,rtt,type,hop_num')
         file.write('\n')
         for lstHop in self.hops:
             for dic in lstHop:
                 file.write(dic['ip_address'] + "," + \
                            str(dic['rtt']) + "," + \
-                           dic['salto_intercontinental'] + "," + \
                            str(dic['type']) + "," + \
                            str(dic['hop_num']))
                 file.write('\n')
         file.close()
-
-
-    def allToFile(self):
-        self.jsonToFile()
-        self.ipsToFile()
-        self.rttToFile()
-        self.interJumpToFile()
-        self.allHopsToFile()
 
 
 if __name__ == "__main__":
@@ -216,6 +186,7 @@ if __name__ == "__main__":
     else:
         traceroute = Traceroute(sys.argv[1])
         traceroute.obtenerTraceroute()
-        traceroute.imprimirListaJson()
-        # traceroute.allToFile()
+        traceroute.printJson()
+        # traceroute.allHopsToFile()
+        # traceroute.jsonToFile()
 
