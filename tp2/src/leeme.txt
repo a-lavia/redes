@@ -1,0 +1,4 @@
+Para utilizar la herramienta traceroute.py, se la debe
+correr por consola de la siguiente forma:
+
+$ sudo python traceroute.py <host>
