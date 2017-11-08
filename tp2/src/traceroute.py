@@ -160,7 +160,7 @@ class Traceroute:
 
 
     def jsonToFile(self):
-        file = open(self.host + '-json.out', 'w')
+        file = open(self.host + '-json.json', 'w')
         file.write(self.tracerouteJson)
         file.close()
 
