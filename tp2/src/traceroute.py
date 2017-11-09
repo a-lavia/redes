@@ -67,14 +67,20 @@ class Traceroute:
                 if dh['ip_address'] != 'null':
                     lstIps.append(dh['ip_address'])
 
+            dic = {}
             if len(lstIps) == 0:
                 # de este hop no hubo respuesta, agrego una respuesta vacia
-                traceroute.append(lstHop[0])
+                dic = {
+                    'ip_address': 'null',
+                    'hop_num': lstHop[0]['hop_num'],
+                    'rtt': 'null',
+                    'salto_intercontinental': 'null'
+                    }
             else:
                 ip = self.buscoIpQueMasAparece(lstIps)
                 # dic vuelve sin el campo type
                 dic = self.dicConRttPromedio(lstHop, ip)
-                traceroute.append(dic)
+            traceroute.append(dic)
         return traceroute
 
 
@@ -104,51 +110,90 @@ class Traceroute:
 
 
     def buscoSaltosInterc(self):
-        # CIMBALA
-        # dic, idx, absolute value of deviation
-        hops = [[self.traceroute[i], i, 0] for i in range(len(self.traceroute))]
-        hayOutlier = True
-        while(hayOutlier):
-            hayOutlier = False
-            media = self.calcMedia(hops)
-            desvEst = self.calcDesvioEstandar(hops, media)
-            self.calcValorAbsDesv(hops, media)
-            tau = self.calcTau(len(hops))
-            tauS = desvEst*tau
-            for i in range(len(hops)):
-                if hops[i][0]['ip_address'] != 'null' and hops[i][2] > tauS:
-                    hayOutlier = True
-                    self.traceroute[hops[i][1]]['salto_intercontinental'] = 'true'
-                    hops.pop(i)
-                    break
+        # Me devuelve una lista de los paquetes que no obtuve respuesta
+        # y otra con los indices donde se produce el outlier.
+        # CUIDADO: outlierIdx tiene el indice de Rtt entre saltos, o sea que el 
+        # valor del indice donde esta el salto es el siguiente.
+        outlierIdx, lstIdxNull = self.cimbala()
+        for idx in outlierIdx:
+            if (idx+1) not in lstIdxNull:
+                self.traceroute[idx+1]['salto_intercontinental'] = True
 
 
-    def calcMedia(self, hops):
+    def calcMedia(self, lstRttes):
         suma = 0.0
-        for dic,i,_ in hops:
-            if dic['ip_address'] != 'null':
-                suma += dic['rtt']
-        return suma / len(hops)
+        for rtt,_,_ in lstRttes:
+            suma += rtt
+        return suma/len(lstRttes)
 
 
-    def calcDesvioEstandar(self, hops, media):
+    def calcDesvioEstandar(self, lstRttes, media):
         suma = 0.0
-        for dic,i,_ in hops:
-            if dic['ip_address'] != 'null':
-                suma += (dic['rtt'] - media)**2
-        return (suma/(len(hops)-1))**(0.5)
+        for rtt,_,_ in lstRttes:
+            suma += (rtt - media)**2
+        return (suma/(len(lstRttes)-1))**(0.5)
 
 
-    def calcValorAbsDesv(self, hops, media):
-        for i in range(len(hops)):
-            if hops[i][0]['ip_address'] != 'null':
-                hops[i][2] = abs(hops[i][0]['rtt'] - media)
+    def calcValorAbsDesv(self, lstRttes, media):
+        for i in range(len(lstRttes)):
+            lstRttes[i][2] = abs(lstRttes[i][0] - media)
 
 
     def calcTau(self, n):
         #Studnt, p<0.05, 2-tail, alpha=0.05
         t = stats.t.ppf(1-0.025, n-2)
         return (t*(n-1)) / ((n**0.5)*((n-2 + t**2)**0.5))
+
+
+    def anteriorNoNull(self, idxNull):
+        for i in range(idxNull-1, 0, -1):
+            if self.traceroute[i]['ip_address'] != 'null':
+                return i
+
+
+    def posteriorNoNull(self, idxNull):
+        for i in range(idxNull+1, len(self.traceroute)):
+            if self.traceroute[i]['ip_address'] != 'null':
+                return i
+
+
+    def dameRtts(self):
+        # si hay un null calcula el promedio del anterior no null y el siguiente no null
+        lstIdxNull = []
+        for i in range(len(self.traceroute)):
+            if self.traceroute[i]['ip_address'] == 'null':
+                lstIdxNull.append(i)
+        rtt = []
+        for i in range(len(self.traceroute)):
+            if i not in lstIdxNull:
+                rtt.append(self.traceroute[i]['rtt'])
+            else:
+                idxAnt = self.anteriorNoNull(i)
+                idxPost = self.posteriorNoNull(i)
+                rtt.append((self.traceroute[idxAnt]['rtt']+self.traceroute[idxPost]['rtt'])/2)
+        return rtt, lstIdxNull
+
+
+    def cimbala(self):
+        # rttes, idx, absolute value of deviation
+        rttcal, lstIdxNull = self.dameRtts()
+        lstRttes = [[abs(rttcal[i] - rttcal[i+1]), i, 0] for i in range(len(rttcal)-1)]
+        outlierIdx = []
+        hayOutlier = True
+        while(hayOutlier):
+            hayOutlier = False
+            media = self.calcMedia(lstRttes)
+            desvEst = self.calcDesvioEstandar(lstRttes, media)
+            self.calcValorAbsDesv(lstRttes, media)
+            tau = self.calcTau(len(lstRttes))
+            tauS = desvEst*tau
+            for i in range(len(lstRttes)):
+                if lstRttes[i][2] > tauS:
+                    hayOutlier = True
+                    outlierIdx.append(lstRttes[i][1])
+                    lstRttes.pop(i)
+                    break
+        return (outlierIdx, lstIdxNull)
 
 
     def toJson(self):
@@ -187,6 +232,6 @@ if __name__ == "__main__":
         traceroute = Traceroute(sys.argv[1])
         traceroute.obtenerTraceroute()
         traceroute.printJson()
-        # traceroute.allHopsToFile()
-        # traceroute.jsonToFile()
+        traceroute.allHopsToFile()
+        traceroute.jsonToFile()
 
